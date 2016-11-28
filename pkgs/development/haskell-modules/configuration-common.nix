@@ -494,6 +494,7 @@ self: super: {
 
   # https://ghc.haskell.org/trac/ghc/ticket/9625
   vty = dontCheck super.vty;
+  vty_5_13 = dontCheck super.vty_5_13;
 
   # https://github.com/vincenthz/hs-crypto-pubkey/issues/20
   crypto-pubkey = dontCheck super.crypto-pubkey;
@@ -1127,5 +1128,8 @@ self: super: {
   # Encountered missing dependencies: hspec >=1.3 && <2.1
   # https://github.com/rampion/ReadArgs/issues/8
   ReadArgs = doJailbreak super.ReadArgs;
+
+  # requires vty 5.13
+  brick = super.brick.overrideScope (self: super: { vty = self.vty_5_13; });
 
 }
