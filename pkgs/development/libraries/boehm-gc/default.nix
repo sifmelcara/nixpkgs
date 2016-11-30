@@ -1,13 +1,12 @@
 { lib, stdenv, fetchurl, enableLargeConfig ? false }:
 
 stdenv.mkDerivation rec {
-  name = "boehm-gc-7.2f";
+  name = "boehm-gc-7.6.0";
 
   src = fetchurl {
-    url = http://www.hboehm.info/gc/gc_source/gc-7.2f.tar.gz;
-    sha256 = "119x7p1cqw40mpwj80xfq879l9m1dkc7vbc1f3bz3kvkf8bf6p16";
+    url = "http://www.hboehm.info/gc/gc_source/gc-7.6.0.tar.gz";
+    sha256 = "a14a28b1129be90e55cd6f71127ffc5594e1091d5d54131528c24cd0c03b7d90";
   };
-  patches = if stdenv.isCygwin then [ ./cygwin.patch ] else null;
 
   outputs = [ "out" "dev" "doc" ];
 
@@ -16,6 +15,19 @@ stdenv.mkDerivation rec {
     ++ lib.optional enableLargeConfig "--enable-large-config";
 
   doCheck = true;
+
+  libatomic_src = fetchurl {
+    url = "http://www.hboehm.info/gc/gc_source/libatomic_ops-7.4.4.tar.gz";
+    sha256 = "bf210a600dd1becbf7936dd2914cf5f5d3356046904848dcfd27d0c8b12b6f8f";
+  };
+
+  postUnpack =
+    ''
+      cd gc-7.6.0
+      tar zxvf ${libatomic_src}
+      ln -s libatomic_ops-7.4.4 libatomic_ops
+      cd ..
+    '';
 
   # Don't run the native `strip' when cross-compiling.
   dontStrip = stdenv ? cross;
