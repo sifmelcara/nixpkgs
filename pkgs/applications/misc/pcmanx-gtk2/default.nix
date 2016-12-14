@@ -1,4 +1,5 @@
-{ stdenv, fetchurl, gtk2, libXft, intltool, automake115x, autoconf, libtool, pkgconfig }:
+{ stdenv, fetchurl, gtk2, libXft, intltool, automake115x
+, autoconf, libtool, pkgconfig, wrapGAppsHook }:
 
 stdenv.mkDerivation {
   name = "pcmanx-gtk2-1.3";
@@ -7,7 +8,8 @@ stdenv.mkDerivation {
     sha256 = "2e5c59f6b568036f2ad6ac67ca2a41dfeeafa185451e507f9fb987d4ed9c4302";
   };
 
-  buildInputs = [ gtk2 libXft intltool automake115x autoconf libtool pkgconfig ];
+  buildInputs = [ gtk2 libXft intltool automake115x
+                  autoconf libtool pkgconfig wrapGAppsHook ];
 
   preConfigurePhases = ''
     ./autogen.sh
