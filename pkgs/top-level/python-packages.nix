@@ -13873,11 +13873,11 @@ in {
 
   pyaudio = buildPythonPackage rec {
     name = "python-pyaudio-${version}";
-    version = "0.2.9";
+    version = "0.2.11";
 
     src = pkgs.fetchurl {
       url = "mirror://pypi/P/PyAudio/PyAudio-${version}.tar.gz";
-      sha256 = "bfd694272b3d1efc51726d0c27650b3c3ba1345f7f8fdada7e86c9751ce0f2a1";
+      sha256 = "0x7vdsigm7xgvyg3shd3lj113m8zqj2pxmrgdyj66kmnw0qdxgwk";
     };
 
     disabled = isPyPy;
