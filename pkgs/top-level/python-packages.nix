@@ -17622,6 +17622,8 @@ in {
     };
   });
 
+  speechrecognition = callPackage ../development/python-modules/speechrecognition { };
+
   sphinx = callPackage ../development/python-modules/sphinx { };
 
   sphinx_1_2 = self.sphinx.overridePythonAttrs rec {
