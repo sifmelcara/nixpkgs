@@ -45,20 +45,6 @@ stdenv.mkDerivation rec {
     sha256 = "0wbcqb9rbfqqvvhqr1pbqax75wp8ydqdyhp91fbqfqp26xzjv6lk";
   };
 
-  rmarkdownSrc = fetchFromGitHub {
-    owner = "rstudio";
-    repo = "rmarkdown";
-    rev = "v1.8";
-    sha256 = "1blqxdr1vp2z5wd52nmf8hq36sdd4s2pyms441dqj50v35f8girb";
-  };
-
-  rsconnectSrc = fetchFromGitHub {
-    owner = "rstudio";
-    repo = "rsconnect";
-    rev = "953c945779dd180c1bfe68f41c173c13ec3e222d";
-    sha256 = "1yxwd9v4mvddh7m5rbljicmssw7glh1lhin7a9f01vxxa92vpj7z";
-  };
-
   rstudiolibclang = fetchurl {
     url = https://s3.amazonaws.com/rstudio-buildtools/libclang-3.5.zip;
     sha256 = "1sl5vb8misipwbbbykdymw172w9qrh8xv3p29g0bf3nzbnv6zc7c";
@@ -82,16 +68,12 @@ stdenv.mkDerivation rec {
 
       mkdir dependencies/common/dictionaries
       for dict in $hunspellDictionaries; do
-          for i in "$dict/share/hunspell/"*
-	  do ln -sv $i dependencies/common/dictionaries/
-	  done
+        for i in "$dict/share/hunspell/"*; do
+          ln -sv $i dependencies/common/dictionaries/
+        done
       done
 
       unzip $mathJaxSrc -d dependencies/common/mathjax-26
-      mkdir -p dependencies/common/rmarkdown
-      ln -s $rmarkdownSrc dependencies/common/rmarkdown/
-      mkdir -p dependencies/common/rsconnect
-      ln -s $rsconnectSrc dependencies/common/rsconnect/
       mkdir -p dependencies/common/libclang/3.5
       unzip $rstudiolibclang -d dependencies/common/libclang/3.5
       mkdir -p dependencies/common/libclang/builtin-headers
@@ -117,7 +99,8 @@ stdenv.mkDerivation rec {
   };
 
   postInstall = ''
-      wrapProgram $out/bin/rstudio --suffix PATH : ${gnumake}/bin
+      wrapProgram $out/bin/rstudio --suffix PATH : ${gnumake}/bin \
+                                   --set QT_QPA_PLATFORM_PLUGIN_PATH ${qtbase.bin}/lib/qt-*/plugins/platforms
       mkdir $out/share
       cp -r ${desktopItem}/share/applications $out/share
       mkdir $out/share/icons
