@@ -1,10 +1,44 @@
-{ mkDerivation, lib, stdenv, makeWrapper, fetchurl, cmake, extra-cmake-modules
-, karchive, kconfig, kwidgetsaddons, kcompletion, kcoreaddons
-, kguiaddons, ki18n, kitemmodels, kitemviews, kwindowsystem
-, kio, kcrash, breeze-icons
-, boost, libraw, fftw, eigen, exiv2, libheif, lcms2, gsl, openexr, giflib
-, openjpeg, opencolorio_1, xsimd, poppler, curl, ilmbase, libmypaint, libwebp
-, qtmultimedia, qtx11extras, quazip
+{ mkDerivation
+, lib
+, stdenv
+, makeWrapper
+, fetchurl
+, cmake
+, extra-cmake-modules
+, karchive
+, kconfig
+, kwidgetsaddons
+, kcompletion
+, kcoreaddons
+, kguiaddons
+, ki18n
+, kitemmodels
+, kitemviews
+, kwindowsystem
+, kio
+, kcrash
+, breeze-icons
+, boost
+, libraw
+, fftw
+, eigen
+, exiv2
+, libheif
+, lcms2
+, gsl
+, openexr
+, giflib
+, openjpeg
+, opencolorio_1
+, xsimd
+, poppler
+, curl
+, ilmbase
+, libmypaint
+, libwebp
+, qtmultimedia
+, qtx11extras
+, quazip
 , python3Packages
 
 , version
@@ -26,11 +60,39 @@ mkDerivation rec {
   nativeBuildInputs = [ cmake extra-cmake-modules python3Packages.sip makeWrapper ];
 
   buildInputs = [
-    karchive kconfig kwidgetsaddons kcompletion kcoreaddons kguiaddons
-    ki18n kitemmodels kitemviews kwindowsystem kio kcrash breeze-icons
-    boost libraw fftw eigen exiv2 lcms2 gsl openexr libheif giflib
-    openjpeg opencolorio_1 poppler curl ilmbase libmypaint libwebp
-    qtmultimedia qtx11extras quazip
+    karchive
+    kconfig
+    kwidgetsaddons
+    kcompletion
+    kcoreaddons
+    kguiaddons
+    ki18n
+    kitemmodels
+    kitemviews
+    kwindowsystem
+    kio
+    kcrash
+    breeze-icons
+    boost
+    libraw
+    fftw
+    eigen
+    exiv2
+    lcms2
+    gsl
+    openexr
+    libheif
+    giflib
+    openjpeg
+    opencolorio_1
+    poppler
+    curl
+    ilmbase
+    libmypaint
+    libwebp
+    qtmultimedia
+    qtx11extras
+    quazip
     python3Packages.pyqt5
     xsimd
   ];
@@ -40,19 +102,22 @@ mkDerivation rec {
 
   # Krita runs custom python scripts in CMake with custom PYTHONPATH which krita determined in their CMake script.
   # Patch the PYTHONPATH so python scripts can import sip successfully.
-  postPatch = let
-    pythonPath = python3Packages.makePythonPath (with python3Packages; [ sip setuptools ]);
-  in ''
-    substituteInPlace cmake/modules/FindSIP.cmake \
-      --replace 'PYTHONPATH=''${_sip_python_path}' 'PYTHONPATH=${pythonPath}'
-    substituteInPlace cmake/modules/SIPMacros.cmake \
-      --replace 'PYTHONPATH=''${_krita_python_path}' 'PYTHONPATH=${pythonPath}'
-  '';
+  postPatch =
+    let
+      pythonPath = python3Packages.makePythonPath (with python3Packages; [ sip setuptools ]);
+    in
+    ''
+      substituteInPlace cmake/modules/FindSIP.cmake \
+        --replace 'PYTHONPATH=''${_sip_python_path}' 'PYTHONPATH=${pythonPath}'
+      substituteInPlace cmake/modules/SIPMacros.cmake \
+        --replace 'PYTHONPATH=''${_krita_python_path}' 'PYTHONPATH=${pythonPath}'
+    '';
 
   cmakeFlags = [
     "-DPYQT5_SIP_DIR=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
     "-DPYQT_SIP_DIR_OVERRIDE=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
-    "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+    "-DCMAKE_BUILD_TYPE=Debug"
+    "-DKRITA_DEVS=1"
   ];
 
   preInstall = ''
