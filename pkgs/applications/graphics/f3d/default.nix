@@ -10,6 +10,7 @@
 , libGL
 , Cocoa
 , OpenGL
+, assimp
 }:
 
 stdenv.mkDerivation rec {
@@ -33,7 +34,7 @@ stdenv.mkDerivation rec {
     autoPatchelfHook
   ];
 
-  buildInputs = [ vtk_9 ] ++ lib.optionals stdenv.isDarwin [ Cocoa OpenGL ];
+  buildInputs = [ vtk_9 assimp ] ++ lib.optionals stdenv.isDarwin [ Cocoa OpenGL ];
 
   cmakeFlags = [
     # conflict between VTK and Nixpkgs;
@@ -41,6 +42,7 @@ stdenv.mkDerivation rec {
     "-DCMAKE_INSTALL_LIBDIR=lib"
     "-DCMAKE_INSTALL_INCLUDEDIR=include"
     "-DCMAKE_INSTALL_BINDIR=bin"
+    "-DF3D_PLUGIN_BUILD_ASSIMP=ON"
 
     "-DF3D_LINUX_GENERATE_MAN=ON"
   ];
