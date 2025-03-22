@@ -1,7 +1,9 @@
 {
-  mkDerivation,
   lib,
+  fetchFromGitHub,
+  wrapQtAppsHook,
   stdenv,
+  kdePackages,
   fetchpatch,
   fetchurl,
   cmake,
@@ -47,40 +49,32 @@
   libunibreak,
   libwebp,
   qtmultimedia,
-  qtx11extras,
   quazip,
   SDL2,
   zug,
   pkg-config,
   python3Packages,
-  version,
-  kde-channel,
-  hash,
 }:
 
-mkDerivation rec {
+kdePackages.mkKdeDerivation rec {
   pname = "krita-unwrapped";
-  inherit version;
+  version = "e970ad017f26c085c7e70e46cbe322c14baf8c20";
 
-  src = fetchurl {
-    url = "mirror://kde/${kde-channel}/krita/${version}/krita-${version}.tar.gz";
-    inherit hash;
+  src = fetchFromGitHub {
+    owner = "KDE";
+    repo = "krita";
+    rev = version;
+    hash = "sha256-gWF3ZBpjnsnC1Bt77EWD+fj+IbzyebF1H1DHp4umNf0=";
   };
 
-  patches = [
-    # Fixes build with SIP 6.8
-    (fetchpatch {
-      name = "bump-SIP-ABI-version-to-12.8.patch";
-      url = "https://invent.kde.org/graphics/krita/-/commit/2d71c47661d43a4e3c1ab0c27803de980bdf2bb2.diff";
-      hash = "sha256-U3E44nj4vra++PJV20h4YHjES78kgrJtr4ktNeQfOdA=";
-    })
-  ];
+  patches = [ ];
 
   nativeBuildInputs = [
     cmake
     extra-cmake-modules
     pkg-config
     python3Packages.sip
+    wrapQtAppsHook
   ];
 
   buildInputs = [
@@ -125,11 +119,10 @@ mkDerivation rec {
     libunibreak
     libwebp
     qtmultimedia
-    qtx11extras
     quazip
     SDL2
     zug
-    python3Packages.pyqt5
+    python3Packages.pyqt6
   ];
 
   env.NIX_CFLAGS_COMPILE = toString (lib.optional stdenv.cc.isGNU "-Wno-deprecated-copy");
@@ -147,8 +140,12 @@ mkDerivation rec {
       );
     in
     ''
-      substituteInPlace cmake/modules/FindSIP.cmake \
-        --replace 'PYTHONPATH=''${_sip_python_path}' 'PYTHONPATH=${pythonPath}'
+      # Not taking effect on master branch due to [Fix detection of SIP on macOS · KDE/krita@413dc4e](https://github.com/KDE/krita/commit/413dc4e92226bd90229b0847cf977fbe62ea5c39)
+      # Not sure if still needed
+      # substituteInPlace cmake/modules/FindSIP.cmake \
+      #   --replace 'PYTHONPATH=''${_sip_python_path}' 'PYTHONPATH=${pythonPath}'
+
+
       substituteInPlace cmake/modules/SIPMacros.cmake \
         --replace 'PYTHONPATH=''${_krita_python_path}' 'PYTHONPATH=${pythonPath}'
 
@@ -159,9 +156,15 @@ mkDerivation rec {
   cmakeBuildType = "RelWithDebInfo";
 
   cmakeFlags = [
-    "-DPYQT5_SIP_DIR=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
-    "-DPYQT_SIP_DIR_OVERRIDE=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
-    "-DBUILD_KRITA_QT_DESIGNER_PLUGINS=ON"
+    # "-DPYQT5_SIP_DIR=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
+
+    # Not sure if still needed, cmake say it's not used in master branch
+    # "-DPYQT_SIP_DIR_OVERRIDE=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
+
+    # qt designer still requires qt5
+    # "-DBUILD_KRITA_QT_DESIGNER_PLUGINS=ON"
+
+    "-DBUILD_WITH_QT6=ON"
   ];
 
   meta = {
