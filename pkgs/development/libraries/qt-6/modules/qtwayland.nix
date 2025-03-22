@@ -14,6 +14,10 @@
 qtModule {
   pname = "qtwayland";
 
+  patches = [
+    ./61a6ce8.diff
+  ];
+
   # wayland-scanner needs to be propagated as both build
   # (for the wayland-scanner binary) and host (for the
   # actual wayland.xml protocol definition)

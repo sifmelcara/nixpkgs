@@ -1,0 +1,154 @@
+From 61a6ce883038e49cbe1085516f0ddda2828070ca Mon Sep 17 00:00:00 2001
+From: Joshua Goins <joshua.goins@kdab.com>
+Date: Fri, 04 Apr 2025 15:39:13 -0400
+Subject: [PATCH] Fix cursor shapes from multiple windows after restoreOverrideCursor()
+
+We hit a snag with a fairly large Qt art application (Krita) now running
+on Wayland, due to how it sets the cursor. It uses a combination of
+per-widget cursor overrides and the cursor override in QGuiApplication,
+making this is a pretty comprehensive test of the Wayland QPA.
+
+The problem is that when performing certain actions (e.g. panning) the
+cursor will show up even if the user disables it in Krita's options. In
+the panning scenario, the operation temporarily overrides the cursor in
+QGuiApplication and is reset when it's over. The intended effect is that
+the cursor appears in the "closed hand" shape and then back to a blank
+cursor. In reality, it goes back to an arrow cursor!
+
+This is because Krita has some internal windows it manages, and they're
+all fighting over the cursor's state (even if they are not below the
+cursor currently!) Panning isn't the only place where this can arise,
+it's also known to happen on the splash screen and whenever a on-canvas
+floating message is shown - these are all popups.
+
+Fortunately an easy fix can be made in QWaylandCursor::changeCursor, and
+it also simplifies the code a bit. Instead of having every window
+restore it's cursor state - only have the focused window do so. This not
+only fixes the cursor in Krita running on Wayland, but also the simple
+case in QTBUG-133541 as well.
+
+Fixes: QTBUG-133541
+Pick-to: 6.8 6.9
+Change-Id: I8d1686d4d7e019a9da4b6f69fab57975fcb1a5bb
+---
+
+diff --git a/src/client/qwaylandcursor.cpp b/src/client/qwaylandcursor.cpp
+index 00b1d7d..3296742 100644
+--- a/src/client/qwaylandcursor.cpp
++++ b/src/client/qwaylandcursor.cpp
+@@ -317,10 +317,17 @@
+     if (cursor && cursor->shape() == Qt::BitmapCursor)
+         bitmapBuffer = cursorBitmapBuffer(mDisplay, cursor);
+ 
+-    int fallbackOutputScale = qCeil(window->handle()->devicePixelRatio());
+     const auto seats = mDisplay->inputDevices();
+-    for (auto *seat : seats)
+-        seat->setCursor(cursor, bitmapBuffer, fallbackOutputScale);
++    for (auto *seat : seats) {
++        if (const auto pointer = seat->pointer()) {
++            // Only update the cursor for the window that is focused, stopping
++            // multiple windows from competing for the cursor state.
++            const auto waylandWindow = static_cast<QWaylandWindow *>(window->handle());
++            if (waylandWindow == pointer->focusWindow()) {
++                waylandWindow->restoreMouseCursor(seat);
++            }
++        }
++    }
+ }
+ 
+ void QWaylandCursor::pointerEvent(const QMouseEvent &event)
+diff --git a/tests/auto/client/cursor/tst_cursor.cpp b/tests/auto/client/cursor/tst_cursor.cpp
+index 070e062..5e8b6f0 100644
+--- a/tests/auto/client/cursor/tst_cursor.cpp
++++ b/tests/auto/client/cursor/tst_cursor.cpp
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
+ 
+ #include "mockcompositor.h"
++#include <QtCore/qnamespace.h>
+ #include <QtGui/QRasterWindow>
+ #include <QtGui/qpa/qplatformnativeinterface.h>
+ #include <QtWaylandClient/private/wayland-wayland-client-protocol.h>
+@@ -21,6 +22,7 @@
+     void init();
+     void cleanup() { QTRY_VERIFY2(isClean(), qPrintable(dirtyMessage())); }
+     void setCursor();
++    void overrideCursor();
+ };
+ 
+ tst_cursor::tst_cursor()
+@@ -97,6 +99,74 @@
+     window.setCursor(QCursor(myCustomPixmap));
+     QVERIFY(setCursorSpy.wait());
+     QVERIFY(setCursorShapeSpy.isEmpty());
++
++    window.setCursor(QCursor(Qt::ArrowCursor));
++}
++
++void tst_cursor::overrideCursor()
++{
++    QCOMPOSITOR_TRY_VERIFY(cursorShape());
++    QSignalSpy setCursorSpy(exec([&] { return pointer(); }), &Pointer::setCursor);
++    QSignalSpy setCursorShapeSpy(exec([&] { return cursorShape(); }),
++                                 &CursorShapeDevice::setCursor);
++
++    QRasterWindow window1;
++    window1.resize(64, 64);
++    window1.setCursor(QCursor(Qt::OpenHandCursor));
++    window1.show();
++    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
++
++    QRasterWindow window2;
++    window2.resize(64, 64);
++    window2.setCursor(QCursor(Qt::PointingHandCursor));
++    window2.show();
++
++    // first window should be shape_grab
++    uint enterSerial = exec([&] {
++        const auto enterSerial = pointer()->sendEnter(xdgSurface(0)->m_surface, { 32, 32 });
++        pointer()->sendFrame(client());
++        return enterSerial;
++    });
++    QVERIFY(setCursorShapeSpy.wait());
++    // verify we got given a cursor on enter
++    QCOMPOSITOR_COMPARE(cursorShape()->m_currentShape, CursorShapeDevice::shape_grab);
++    QVERIFY(setCursorSpy.isEmpty());
++    QCOMPARE(setCursorShapeSpy.takeFirst().at(0).toUInt(), enterSerial);
++
++    // leave the previous surface
++    exec([&] {
++        pointer()->sendLeave(xdgSurface(0)->m_surface);
++        pointer()->sendFrame(client());
++    });
++    setCursorShapeSpy.clear();
++
++    // second window should be shape_pointer
++    enterSerial = exec([&] {
++        const auto enterSerial = pointer()->sendEnter(xdgSurface(1)->m_surface, { 32, 32 });
++        pointer()->sendFrame(client());
++        return enterSerial;
++    });
++    QVERIFY(setCursorShapeSpy.wait());
++    // verify we got given a cursor on enter
++    QCOMPOSITOR_COMPARE(cursorShape()->m_currentShape, CursorShapeDevice::shape_pointer);
++    QVERIFY(setCursorSpy.isEmpty());
++    QCOMPARE(setCursorShapeSpy.takeFirst().at(0).toUInt(), enterSerial);
++
++    // set the override cursor
++    QGuiApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
++
++    // verify it's set to shape_wait
++    QVERIFY(setCursorShapeSpy.wait());
++    QCOMPOSITOR_COMPARE(cursorShape()->m_currentShape, CursorShapeDevice::shape_wait);
++    QVERIFY(setCursorSpy.isEmpty());
++
++    // now restore the override cursor
++    QGuiApplication::restoreOverrideCursor();
++
++    // it should be shape_pointer because we never left the second surface
++    QVERIFY(setCursorShapeSpy.wait());
++    QCOMPOSITOR_COMPARE(cursorShape()->m_currentShape, CursorShapeDevice::shape_pointer);
++    QVERIFY(setCursorSpy.isEmpty());
+ }
+ 
+ QCOMPOSITOR_TEST_MAIN(tst_cursor)
