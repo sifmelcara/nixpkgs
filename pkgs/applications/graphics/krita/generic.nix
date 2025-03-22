@@ -7,6 +7,7 @@
   cmake,
   extra-cmake-modules,
   karchive,
+  qtquickcontrols2,
   kconfig,
   kwidgetsaddons,
   kcompletion,
@@ -67,14 +68,7 @@ mkDerivation rec {
     inherit hash;
   };
 
-  patches = [
-    # Fixes build with SIP 6.8
-    (fetchpatch {
-      name = "bump-SIP-ABI-version-to-12.8.patch";
-      url = "https://invent.kde.org/graphics/krita/-/commit/2d71c47661d43a4e3c1ab0c27803de980bdf2bb2.diff";
-      hash = "sha256-U3E44nj4vra++PJV20h4YHjES78kgrJtr4ktNeQfOdA=";
-    })
-  ];
+  patches = [ ];
 
   nativeBuildInputs = [
     cmake
@@ -85,6 +79,7 @@ mkDerivation rec {
 
   buildInputs = [
     karchive
+    qtquickcontrols2
     kconfig
     kwidgetsaddons
     kcompletion
@@ -159,10 +154,13 @@ mkDerivation rec {
   cmakeBuildType = "RelWithDebInfo";
 
   cmakeFlags = [
+    "-DBUILD_TESTING=ON"
     "-DPYQT5_SIP_DIR=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
     "-DPYQT_SIP_DIR_OVERRIDE=${python3Packages.pyqt5}/${python3Packages.python.sitePackages}/PyQt5/bindings"
     "-DBUILD_KRITA_QT_DESIGNER_PLUGINS=ON"
   ];
+
+  doCheck = true;
 
   meta = with lib; {
     description = "Free and open source painting application";
