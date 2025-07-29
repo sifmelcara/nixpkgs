@@ -58,13 +58,14 @@
 
 kdePackages.mkKdeDerivation rec {
   pname = "krita-unwrapped";
-  version = "e970ad017f26c085c7e70e46cbe322c14baf8c20";
+  # master at 2025-07-29
+  version = "c676b322363e758b2d49a4913e674f7d40853883";
 
   src = fetchFromGitHub {
     owner = "KDE";
     repo = "krita";
     rev = version;
-    hash = "sha256-gWF3ZBpjnsnC1Bt77EWD+fj+IbzyebF1H1DHp4umNf0=";
+    hash = "sha256-H48zgMqWyeEQC69jAQ+u2N3yFUu7lUStcADaCIR9vdE=";
   };
 
   patches = [ ];
