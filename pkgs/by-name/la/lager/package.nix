@@ -37,6 +37,6 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://github.com/arximboldi/lager";
     description = "C++ library for value-oriented design using the unidirectional data-flow architecture — Redux for C++";
     license = lib.licenses.mit;
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [ sifmelcara ];
   };
 })
